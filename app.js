@@ -4,8 +4,10 @@ const express = require("express");
 const ejs = require("ejs");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
 // const encrypt = require("mongoose-encryption");
-const md5 = require("md5");
+// const md5 = require("md5");
 
 const app = express();
 
@@ -39,8 +41,12 @@ async function main() {
   app.post("/login", async function (req, res) {
     const username = req.body.username;
     const foundUser = await User.findOne({ email: username });
-    if (foundUser.password === md5(req.body.password)) {
-      res.redirect("/secrets");
+
+    if (foundUser) {
+      var result = await bcrypt.compare(req.body.password, foundUser.password);
+      if (result) {
+        res.redirect("/secrets");
+      } else res.redirect("/");
     } else {
       console.log("No such user");
       res.redirect("/");
@@ -51,10 +57,11 @@ async function main() {
     res.render("register");
   });
 
-  app.post("/register", function (req, res) {
+  app.post("/register", async function (req, res) {
+    var hash = await bcrypt.hash(req.body.password, saltRounds);
     const newUser = new User({
       email: req.body.username,
-      password: md5(req.body.password),
+      password: hash,
     });
     newUser.save();
     res.redirect("/secrets");
